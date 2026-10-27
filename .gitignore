@@ -1,0 +1,21 @@
+# build outputs
+*.apk
+*.log
+app-project/.gradle/
+app-project/build/
+app-project/app/build/
+app-project/jniLibs/
+app-project/assets/
+app-project/local.properties
+
+# local test material
+*.png
+!docs/*.png
+*.stl
+from-googlebook/
+
+# local debugging helpers
+chk.sh
+lines.sh
+peek.sh
+peekfile.sh

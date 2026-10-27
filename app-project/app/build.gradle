@@ -1,0 +1,61 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.prusa3d.slicer'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.prusa3d.slicer.gbos'
+        minSdk 29
+        targetSdk 35
+        versionCode 1
+        versionName '3.0.0-alpha12'
+        ndk {
+            abiFilters 'x86_64'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // While porting: allows "adb shell run-as" to read PrusaSlicer's data directory.
+            debuggable true
+            jniDebuggable true
+            // Personal sideload build: signed with the debug key.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            // libmain.so, libSDL2.so, libc++_shared.so are produced by build-app.sh
+            jniLibs.srcDirs = ['../jniLibs']
+            // PrusaSlicer's resources directory, unpacked on first start
+            assets.srcDirs = ['../assets']
+        }
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+
+    androidResources {
+        // keep PrusaSlicer's resource files byte-identical (no compression of .png/.svg/.ini etc.)
+        noCompress += ['']
+        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+    }
+}
+
+dependencies {
+    // WebViewCompat.addDocumentStartJavaScript for the browser logic's script message handlers
+    implementation 'androidx.webkit:webkit:1.12.1'
+}
