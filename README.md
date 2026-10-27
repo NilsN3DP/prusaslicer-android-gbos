@@ -1,6 +1,8 @@
 # PrusaSlicer for Android (Googlebook OS)
 
-A native Android port of [PrusaSlicer](https://github.com/prusa3d/PrusaSlicer) 3.0.0-alpha12 for x86_64 Android devices such as Googlebooks running gbOS – a real APK, no Linux container or X11.
+A native Android port of [PrusaSlicer](https://github.com/prusa3d/PrusaSlicer) 3.0.0-alpha12 for Android devices such as Googlebooks running gbOS – a real APK, no Linux container or X11.
+
+Releases contain one APK per architecture: `x86_64` (Googlebooks, emulator) and `arm64-v8a` (phones, tablets, ARM Chromebooks; so far only tested in the emulator, not on real ARM hardware).
 
 ![PrusaSlicer on Android](docs/screenshot.png)
 
@@ -21,7 +23,7 @@ A native Android port of [PrusaSlicer](https://github.com/prusa3d/PrusaSlicer) 3
 | `slic3r-app-android/` | Android app layer (app setup, dialogs, WebView host, JNI bridge) |
 | `slic3r-platform-sdl/` | SDL2 render canvas and main thread dispatcher |
 | `app-project/` | Gradle project: activity, side bar, WebView pages |
-| `deploy.ps1` | Build, package and install the APK |
+| `deploy.ps1` | Build, package and install the APK (`-Abi x86_64` or `-Abi arm64-v8a`) |
 
 ## License
 
