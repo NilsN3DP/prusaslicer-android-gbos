@@ -11,10 +11,18 @@ fi
 grep -q 'string(REPLACE "${_stdlib}" "" _gmp_cxxflags' deps/+GMP/GMP.cmake
 
 # OpenSSL: has its own android-* targets (uses ANDROID_NDK_ROOT + clang from PATH), no cross prefix
-if ! grep -q 'android-${ANDROID_ABI}' deps/+OpenSSL/OpenSSL.cmake; then
+if ! grep -q 'android-${ANDROID_ABI}\|_ossl_android' deps/+OpenSSL/OpenSSL.cmake; then
   perl -0pi -e 's/\nelseif \(CMAKE_CROSSCOMPILING\)\n/\nelseif (ANDROID)\n    set(_conf_cmd env -u CC -u CXX -u AR -u RANLIB -u NM -u LD ".\/Configure")\n    set(_cross_arch android-\${ANDROID_ABI} -D__ANDROID_API__=\${ANDROID_NATIVE_API_LEVEL})\nelseif (CMAKE_CROSSCOMPILING)\n/' deps/+OpenSSL/OpenSSL.cmake
 fi
-grep -q 'android-${ANDROID_ABI}' deps/+OpenSSL/OpenSSL.cmake
+grep -q 'android-${ANDROID_ABI}\|_ossl_android' deps/+OpenSSL/OpenSSL.cmake
+# OpenSSL names the arm targets android-arm64 / android-arm, not after the Android ABI
+if ! grep -q '_ossl_android' deps/+OpenSSL/OpenSSL.cmake; then
+  perl -0pi -e 's/(\n(\s*))set\(_cross_arch android-\$\{ANDROID_ABI\}/$1if (ANDROID_ABI STREQUAL "arm64-v8a")\n$2    set(_ossl_android android-arm64)\n$2elseif (ANDROID_ABI STREQUAL "armeabi-v7a")\n$2    set(_ossl_android android-arm)\n$2else ()\n$2    set(_ossl_android android-\${ANDROID_ABI})\n$2endif ()\n$2set(_cross_arch \${_ossl_android}/' deps/+OpenSSL/OpenSSL.cmake
+fi
+grep -q 'set(_cross_arch ${_ossl_android}' deps/+OpenSSL/OpenSSL.cmake
+# arm64: OpenSSL 3.5's poly1305 SVE2 assembly is not position independent and breaks linking libmain.so
+sed -i 's|set(_ossl_android android-arm64)$|set(_ossl_android android-arm64 no-asm) # android: arm64 no-asm|' deps/+OpenSSL/OpenSSL.cmake
+grep -q 'android: arm64 no-asm' deps/+OpenSSL/OpenSSL.cmake
 
 # ---------------------------------------------------------------------------------------------
 # Main build: Android = SDL platform + OpenGL ES instead of wxWidgets + desktop GL
@@ -47,11 +55,12 @@ fi
 grep -q 'endif () # NOT ANDROID' bundled_deps/imgui/CMakeLists.txt
 
 # Boost.Process: bionic has no <wordexp.h>; use the shim (patched into the extracted source)
-BOOST_SHELL=deps/build/dep_Boost-prefix/src/dep_Boost/libs/process/src/shell.cpp
-if [ -f "$BOOST_SHELL" ] && ! grep -q android_wordexp.h "$BOOST_SHELL"; then
-  cp "/mnt/z/Prusa Slicer Googlebook OS/android-native/shims/android_wordexp.h" "$(dirname "$BOOST_SHELL")/"
-  sed -i 's|#include <wordexp.h>|#if defined(__ANDROID__)\n#include "android_wordexp.h"\n#else\n#include <wordexp.h>\n#endif|' "$BOOST_SHELL"
-fi
+for BOOST_SHELL in deps/build*/dep_Boost-prefix/src/dep_Boost/libs/process/src/shell.cpp; do
+  if [ -f "$BOOST_SHELL" ] && ! grep -q android_wordexp.h "$BOOST_SHELL"; then
+    cp "/mnt/z/Prusa Slicer Googlebook OS/android-native/shims/android_wordexp.h" "$(dirname "$BOOST_SHELL")/"
+    sed -i 's|#include <wordexp.h>|#if defined(__ANDROID__)\n#include "android_wordexp.h"\n#else\n#include <wordexp.h>\n#endif|' "$BOOST_SHELL"
+  fi
+done
 
 # PNG: Linux takes the system libpng; Android has none, so build it like on macOS / Windows
 if ! grep -q 'MSVC OR APPLE OR EMSCRIPTEN OR ANDROID' deps/+PNG/PNG.cmake; then
@@ -89,6 +98,9 @@ if ! grep -q 'android: Lua' deps/+Lua/Lua.cmake; then
   perl -0pi -e 's/\n(\s*)if\(APPLE\)\n(\s*)set\(LUA_MAKE_TARGET "macosx"\)/\n$1if(ANDROID) # android: Lua\n$2set(LUA_MAKE_TARGET "posix")\n$2set(LUA_ENV "CC=\$ENV{CC}" "MYCFLAGS=-fPIC")\n$1elseif(APPLE)\n$2set(LUA_MAKE_TARGET "macosx")/' deps/+Lua/Lua.cmake
 fi
 grep -q 'android: Lua' deps/+Lua/Lua.cmake
+# $ENV{CC} is whatever the configuring shell had: name the target's NDK clang wrapper explicitly
+sed -i 's|"CC=$ENV{CC}"|"CC=${ANDROID_TOOLCHAIN_ROOT}/bin/${TOOLCHAIN_PREFIX}${ANDROID_NATIVE_API_LEVEL}-clang"|' deps/+Lua/Lua.cmake
+grep -q 'TOOLCHAIN_PREFIX}${ANDROID_NATIVE_API_LEVEL}-clang' deps/+Lua/Lua.cmake
 
 # glBlitFramebuffer and the READ/DRAW framebuffer bindings are core in OpenGL ES 3.0
 perl -0pi -e 's/#if SLIC3R_OPENGL_ES\n(\s*)PANIC\("Not implemented yet"\);\n#else/#if 0 \/\/ android: blitting is core in OpenGL ES 3.0\n$1PANIC("Not implemented yet");\n#else/g' src/slic3r-render/src/Slic3r/App/Render/GL/GLDeviceInternal.cpp

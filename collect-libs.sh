@@ -5,12 +5,18 @@ BASE="/mnt/z/Prusa Slicer Googlebook OS/android-native"
 SRC=/work/PrusaSlicer-android
 NDK=/opt/android-ndk-r27c
 STRIP=$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip
-OUT="$BASE/app-project/jniLibs/x86_64"
+ABI=${1:-x86_64}
+case "$ABI" in
+  x86_64)    TRIPLE=x86_64-linux-android;  DEPS_BUILD=deps/build;           APP_BUILD=build-android ;;
+  arm64-v8a) TRIPLE=aarch64-linux-android; DEPS_BUILD=deps/build-arm64-v8a; APP_BUILD=build-android-arm64-v8a ;;
+  *) echo "unknown ABI $ABI"; exit 1 ;;
+esac
+OUT="$BASE/app-project/jniLibs/$ABI"
 
 mkdir -p "$OUT"
-cp "$(find $SRC/build-android -name libmain.so | head -1)" "$OUT/libmain.so"
-cp "$SRC/deps/build/destdir/usr/local/lib/libSDL2.so" "$OUT/libSDL2.so"
-cp "$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so" "$OUT/"
+cp "$(find $SRC/$APP_BUILD -name libmain.so | head -1)" "$OUT/libmain.so"
+cp "$SRC/$DEPS_BUILD/destdir/usr/local/lib/libSDL2.so" "$OUT/libSDL2.so"
+cp "$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/$TRIPLE/libc++_shared.so" "$OUT/"
 $STRIP --strip-unneeded "$OUT"/*.so
 ls -la "$OUT"
 

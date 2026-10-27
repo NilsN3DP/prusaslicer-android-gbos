@@ -442,6 +442,12 @@ void init_android_paths(InitParams& init_params)
     ::setenv("HOME", files.c_str(), 1);
     ::setenv("XDG_CONFIG_HOME", (files + "/config").c_str(), 1);
     ::setenv("XDG_CACHE_HOME", (files + "/cache").c_str(), 1);
+    // Without TMPDIR boost::filesystem::temp_directory_path() falls back to /data/local/tmp, which
+    // apps may not write to (the preset updater then fails and its error path crashes on startup).
+    const std::string tmp = files + "/tmp";
+    boost::system::error_code ec;
+    boost::filesystem::create_directories(tmp, ec);
+    ::setenv("TMPDIR", tmp.c_str(), 1);
 
     const boost::filesystem::path resources = boost::filesystem::path(files) / "resources";
     set_resources_dir(resources.string());

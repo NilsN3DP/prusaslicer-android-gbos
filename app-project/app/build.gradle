@@ -12,9 +12,6 @@ android {
         targetSdk 35
         versionCode 1
         versionName '3.0.0-alpha12'
-        ndk {
-            abiFilters 'x86_64'
-        }
     }
 
     buildTypes {
@@ -25,6 +22,18 @@ android {
             jniDebuggable true
             // Personal sideload build: signed with the debug key.
             signingConfig signingConfigs.debug
+        }
+    }
+
+    // One APK per architecture (each carries ~120 MB of resources): x86_64 for Googlebooks /
+    // Chromebooks, arm64-v8a for phones, tablets and ARM Chromebooks. Only ABIs built by
+    // collect-libs.sh (app-project/jniLibs/<abi>) end up in an APK.
+    splits {
+        abi {
+            enable true
+            reset()
+            include(*(['x86_64', 'arm64-v8a'].findAll { new File(projectDir, "../jniLibs/$it/libmain.so").exists() }))
+            universalApk false
         }
     }
 
